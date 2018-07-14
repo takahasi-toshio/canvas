@@ -53,3 +53,99 @@ class SceneNode {
     return this._boundBox;
   }
 }
+
+class PathShape {
+  constructor() {
+  }
+
+  moveTo(x, y) {
+    this._pushUInt8(PathShape._MOVE_TO);
+    this._pushFloat64(x);
+    this._pushFloat64(y);
+  }
+
+  lineTo(x, y) {
+    this._pushUInt8(PathShape._LINE_TO);
+    this._pushFloat64(x);
+    this._pushFloat64(y);
+  }
+
+  shrink_to_fit() {
+    if (this._buffer) {
+      if (this._buffer.byteLength > this._offset) {
+        if (this._offset === 0) {
+          delete this._buffer;
+          delete this._dataView;
+          delete this._offset;
+        }
+        else {
+          this._buffer = this._buffer.slice(0, this._offset);
+          this._dataView = new DataView(this._buffer);
+        }
+      }
+    }
+  }
+
+  run(context) {
+    if (this._buffer) {
+      context.beginPath();
+      let x;
+      let y;
+      for (let i = 0; i < this._offset;) {
+        let op = this._dataView.getUint8(i);
+        ++i;
+        switch (op) {
+          case PathShape._MOVE_TO:
+            x = this._dataView.getFloat64(i);
+            y = this._dataView.getFloat64(i + 8);
+            context.moveTo(x, y);
+            i += 8 + 8;
+            break;
+          case PathShape._LINE_TO:
+            x = this._dataView.getFloat64(i);
+            y = this._dataView.getFloat64(i + 8);
+            context.lineTo(x, y);
+            i += 8 + 8;
+            break;
+          default:
+            return;
+        }
+      }
+    }
+  }
+
+  _pushUInt8(u8) {
+    this._extend(1);
+    this._dataView.setUint8(this._offset, u8);
+    this._offset += 1;
+  }
+
+  _pushFloat64(f64) {
+    this._extend(8);
+    this._dataView.setFloat64(this._offset, f64);
+    this._offset += 8;
+  }
+
+  _extend(byteLength) {
+    if (!this._buffer) {
+      this._buffer = new ArrayBuffer(Math.max(128, byteLength));
+      this._dataView = new DataView(this._buffer);
+      this._offset = 0;
+    }
+
+    if (this._offset + byteLength >= this._buffer.byteLength) {
+      let buffer = new ArrayBuffer(Math.max(this._buffer.byteLength * 3 / 2, this._offset + byteLength));
+      (new Uint8Array(buffer)).set(new Uint8Array(this._buffer));
+      this._buffer = buffer;
+      this._dataView = new DataView(this._buffer);
+    }
+  }
+
+  static get _MOVE_TO() {
+    return 1;
+  }
+
+  static get _LINE_TO() {
+    return 2;
+  }
+}

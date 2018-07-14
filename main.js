@@ -23,7 +23,15 @@ function onCanvasResize() {
       setTransform(context, width, height, viewArea);
       context.lineWidth = 20;
       context.strokeStyle = "red";
-      context.strokeRect(-1400, -400, 5000, 20000);
+      //context.strokeRect(-1400, -400, 5000, 20000);
+      let shape = new PathShape;
+      shape.moveTo(-1400, -400);
+      shape.lineTo(-1400, 20000);
+      shape.lineTo(5000, 20000);
+      shape.lineTo(5000, -400);
+      shape.shrink_to_fit();
+      shape.run(context);
+      context.stroke();
     }
   }
 }
