@@ -70,6 +70,11 @@ class PathShape {
     this._pushFloat64(y);
   }
 
+  set lineWidth(width) {
+    this._pushUInt8(PathShape._LINE_WIDTH);
+    this._pushFloat64(width);
+  }
+
   shrink_to_fit() {
     if (this._buffer) {
       if (this._buffer.byteLength > this._offset) {
@@ -86,7 +91,53 @@ class PathShape {
     }
   }
 
-  run(context) {
+  stroke(context, onePixelSize) {
+    if (this._buffer) {
+      context.beginPath();
+      let x;
+      let y;
+      let lineWidth;
+      let lastX = undefined;
+      let lastY = undefined;
+      for (let i = 0; i < this._offset;) {
+        let op = this._dataView.getUint8(i);
+        ++i;
+        switch (op) {
+          case PathShape._MOVE_TO:
+            x = this._dataView.getFloat64(i);
+            y = this._dataView.getFloat64(i + 8);
+            context.moveTo(x, y);
+            i += 8 + 8;
+            break;
+          case PathShape._LINE_TO:
+            lastX = this._dataView.getFloat64(i);
+            lastY = this._dataView.getFloat64(i + 8);
+            context.lineTo(lastX, lastY);
+            i += 8 + 8;
+            break;
+          case PathShape._LINE_WIDTH:
+            if (lastX !== undefined) {
+              context.stroke();
+              context.beginPath();
+              context.moveTo(lastX, lastY);
+              lastX = undefined;
+              lastY = undefined;
+            }
+            lineWidth = this._dataView.getFloat64(i);
+            context.lineWidth = Math.max(lineWidth, onePixelSize);
+            i += 8;
+            break;
+          default:
+            return;
+        }
+      }
+      if (lastX !== undefined) {
+        context.stroke();
+      }
+    }
+  }
+
+  fill(context, fillRule) {
     if (this._buffer) {
       context.beginPath();
       let x;
@@ -107,10 +158,15 @@ class PathShape {
             context.lineTo(x, y);
             i += 8 + 8;
             break;
+          case PathShape._LINE_WIDTH:
+            // fillでは使わない
+            i += 8;
+            break;
           default:
             return;
         }
       }
+      context.fill(fillRule);
     }
   }
 
@@ -140,12 +196,8 @@ class PathShape {
       this._dataView = new DataView(this._buffer);
     }
   }
-
-  static get _MOVE_TO() {
-    return 1;
-  }
-
-  static get _LINE_TO() {
-    return 2;
-  }
 }
+
+PathShape._MOVE_TO = 1;
+PathShape._LINE_TO = 2;
+PathShape._LINE_WIDTH = 3;

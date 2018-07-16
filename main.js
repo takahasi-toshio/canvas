@@ -20,18 +20,26 @@ function onCanvasResize() {
     let context = canvas.getContext('2d');
     if (context) {
       let viewArea = new GeoBox(-1500, -500, 12340, 34550);
-      setTransform(context, width, height, viewArea);
-      context.lineWidth = 20;
+      let onePixelSize = setTransform(context, width, height, viewArea);
+      context.lineWidth = onePixelSize;
       context.strokeStyle = "red";
+      context.lineCap = "round";
+      context.fillStyle = "green";
       //context.strokeRect(-1400, -400, 5000, 20000);
       let shape = new PathShape;
       shape.moveTo(-1400, -400);
       shape.lineTo(-1400, 20000);
       shape.lineTo(5000, 20000);
       shape.lineTo(5000, -400);
+      shape.lineTo(-1400, -400);
+      shape.moveTo(-1200, -200);
+      shape.lineTo(-1200, 10000);
+      shape.lineTo(4000, 10000);
+      shape.lineTo(4000, -200);
+      shape.lineTo(-1200, -200);
       shape.shrink_to_fit();
-      shape.run(context);
-      context.stroke();
+      shape.fill(context, "evenodd");
+      shape.stroke(context, onePixelSize);
     }
   }
 }
@@ -40,7 +48,7 @@ function setTransform(context, width, height, viewArea) {
   context.setTransform(1, 0, 0, 1, 0, 0);
 
   if ((width === 0) || (viewArea.width === 0)) {
-    return;
+    return 1;
   }
 
   const canvas_aspect = height / width;
@@ -55,11 +63,13 @@ function setTransform(context, width, height, viewArea) {
   }
 
   if (scale === 0) {
-    return;
+    return 1;
   }
 
   context.scale(scale, -scale);
   context.translate((width / scale - viewArea.width) / 2 - viewArea.minX, (height / scale - viewArea.height) / 2 - height / scale - viewArea.minY);
+
+  return 1 / scale;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
