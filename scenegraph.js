@@ -70,6 +70,16 @@ class PathShape {
     this._pushFloat64(y);
   }
 
+  arc(x, y, radius, startAngle, endAngle, anticlockwise) {
+    this._pushUInt8(PathShape._ARC);
+    this._pushFloat64(x);
+    this._pushFloat64(y);
+    this._pushFloat64(radius);
+    this._pushFloat64(startAngle);
+    this._pushFloat64(endAngle);
+    this._pushUInt8(anticlockwise ? 1 : 0);
+  }
+
   set lineWidth(width) {
     this._pushUInt8(PathShape._LINE_WIDTH);
     this._pushFloat64(width);
@@ -96,6 +106,10 @@ class PathShape {
       context.beginPath();
       let x;
       let y;
+      let radius;
+      let startAngle;
+      let endAngle;
+      let anticlockwise;
       let lineWidth;
       let lastX = undefined;
       let lastY = undefined;
@@ -114,6 +128,18 @@ class PathShape {
             lastY = this._dataView.getFloat64(i + 8);
             context.lineTo(lastX, lastY);
             i += 8 + 8;
+            break;
+          case PathShape._ARC:
+            x = this._dataView.getFloat64(i);
+            y = this._dataView.getFloat64(i + 8);
+            radius = this._dataView.getFloat64(i + 8 + 8);
+            startAngle = this._dataView.getFloat64(i + 8 + 8 + 8);
+            endAngle = this._dataView.getFloat64(i + 8 + 8 + 8 + 8);
+            anticlockwise = this._dataView.getUint8(i + 8 + 8 + 8 + 8 + 8) ? true : false;
+            lastX = x + Math.cos(endAngle) * radius;
+            lastY = y + Math.sin(endAngle) * radius;
+            context.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+            i += 8 + 8 + 8 + 8 + 8 + 1;
             break;
           case PathShape._LINE_WIDTH:
             if (lastX !== undefined) {
@@ -142,6 +168,10 @@ class PathShape {
       context.beginPath();
       let x;
       let y;
+      let radius;
+      let startAngle;
+      let endAngle;
+      let anticlockwise;
       for (let i = 0; i < this._offset;) {
         let op = this._dataView.getUint8(i);
         ++i;
@@ -157,6 +187,16 @@ class PathShape {
             y = this._dataView.getFloat64(i + 8);
             context.lineTo(x, y);
             i += 8 + 8;
+            break;
+          case PathShape._ARC:
+            x = this._dataView.getFloat64(i);
+            y = this._dataView.getFloat64(i + 8);
+            radius = this._dataView.getFloat64(i + 8 + 8);
+            startAngle = this._dataView.getFloat64(i + 8 + 8 + 8);
+            endAngle = this._dataView.getFloat64(i + 8 + 8 + 8 + 8);
+            anticlockwise = this._dataView.getUint8(i + 8 + 8 + 8 + 8 + 8) ? true : false;
+            context.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+            i += 8 + 8 + 8 + 8 + 8 + 1;
             break;
           case PathShape._LINE_WIDTH:
             // fillでは使わない
@@ -200,4 +240,5 @@ class PathShape {
 
 PathShape._MOVE_TO = 1;
 PathShape._LINE_TO = 2;
-PathShape._LINE_WIDTH = 3;
+PathShape._ARC = 3;
+PathShape._LINE_WIDTH = 4;
